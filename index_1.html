@@ -1,0 +1,590 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>울음소리 도감 퀴즈</title>
+<meta property="og:title" content="울음소리 도감 퀴즈">
+<meta property="og:description" content="울음소리만 듣고 포켓몬 이름을 맞혀 보세요">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<style>
+/* Layout: setup page = centered card column; game page = full-height column (top bar, hint chips, stage that fills the space, answer bar) */
+:root{
+  --bg:#eef1f4; --surface:#ffffff; --ink:#16202b; --muted:#5d6b78; --line:#d6dde4;
+  --accent:#2563eb; --accent-ink:#ffffff; --good:#15803d; --bad:#c2410c; --stage:#f6f8fa;
+  --spot-a:#ffffff; --spot-b:#eef2f6; --ph-fill:#e4e9ee; --ph-ring:#cdd5dd; --ph-mark:#a9b4bf;
+  --scrim:rgba(15,20,26,.55);
+  --f-display:"Do Hyeon","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --f-body:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f141a; --surface:#18202a; --ink:#e7edf3; --muted:#93a1ae; --line:#2b3642;
+  --accent:#5b8cff; --accent-ink:#0b1220; --good:#4ade80; --bad:#fb923c; --stage:#121921;
+  --spot-a:#d3dae2; --spot-b:#56636f; --ph-fill:#232d38; --ph-ring:#34404d; --ph-mark:#6b7a88;
+  --scrim:rgba(0,0,0,.65); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f141a; --surface:#18202a; --ink:#e7edf3; --muted:#93a1ae; --line:#2b3642;
+  --accent:#5b8cff; --accent-ink:#0b1220; --good:#4ade80; --bad:#fb923c; --stage:#121921;
+  --spot-a:#d3dae2; --spot-b:#56636f; --ph-fill:#232d38; --ph-ring:#34404d; --ph-mark:#6b7a88;
+  --scrim:rgba(0,0,0,.65); color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--f-body);
+  padding-block:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-bottom,0px));
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+button:disabled{opacity:.45;cursor:default}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+/* 공통 상단 */
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.brand h1{font:400 26px/1 var(--f-display);margin:0;white-space:nowrap}
+.wave{display:flex;gap:3px;align-items:center;height:24px;flex:none}
+.wave i{display:block;width:4px;border-radius:2px;background:var(--accent)}
+.icon-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:10px;height:40px;min-width:40px;padding:0 10px;font-size:14px;font-weight:500}
+.icon-btn svg{width:20px;height:20px}
+
+/* 시작 화면 */
+#setup{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:20px;display:flex;flex-direction:column;gap:14px}
+.label{font-size:12px;letter-spacing:.08em;color:var(--muted);font-weight:700}
+.gens{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.chip{border:1px solid var(--line);background:var(--stage);border-radius:10px;padding:9px 0;font-weight:500;text-align:center}
+.chip[aria-pressed="true"],.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.chip small{display:block;font:500 11px var(--f-mono);opacity:.75}
+.toggles{display:flex;flex-direction:column}
+.tg{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 0;border-top:1px solid var(--line);cursor:pointer}
+.tg:first-child{border-top:0}
+.tg span small{display:block;color:var(--muted);font-size:12.5px}
+.switch{position:relative;width:46px;height:26px;flex:none}
+.switch input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer}
+.switch b{position:absolute;inset:0;border-radius:13px;background:var(--line);transition:background .15s}
+.switch b::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform .15s}
+.switch input:checked+b{background:var(--accent)}
+.switch input:checked+b::after{transform:translateX(20px)}
+.switch input:focus-visible+b{outline:3px solid var(--accent);outline-offset:2px}
+.primary{background:var(--accent);color:var(--accent-ink);border:0;border-radius:12px;padding:14px 18px;font-weight:700;font-size:16px}
+.ghost{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-weight:500}
+.summary{font-size:13px;color:var(--muted);text-align:center}
+
+/* 게임 화면 */
+#game{height:100%;max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+.meta{display:flex;align-items:center;gap:12px;font:500 13px var(--f-mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.meta .ok{color:var(--good)} .meta .no{color:var(--bad)}
+.hintbar{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.hchip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px;font-size:13px;font-weight:500;color:var(--muted)}
+.hchip[aria-pressed="true"]{border-color:var(--accent);color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,var(--surface))}
+.stage{position:relative;flex:1 1 auto;min-height:220px;border-radius:18px;overflow:hidden;display:grid;place-items:center;
+  background:radial-gradient(closest-side circle at 50% 50%,var(--spot-a) 0%,var(--spot-b) 70%,var(--stage) 100%),var(--stage);border:1px solid var(--line)}
+.stage img{grid-area:1/1;width:auto;height:auto;max-width:min(78%,460px);max-height:calc(100% - 40px);object-fit:contain;user-select:none;-webkit-user-drag:none;pointer-events:none}
+.stage img.sil{filter:brightness(0)}
+.stage img.loading{opacity:0}
+.stage img.revealing{transition:filter .4s ease}
+.placeholder{grid-area:1/1;width:min(52%,300px);max-height:calc(100% - 40px);height:auto}
+.dexno{position:absolute;top:12px;left:14px;font:500 13px var(--f-mono);color:var(--muted)}
+.hints{position:absolute;top:10px;right:12px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;max-width:70%}
+.pill{font-size:12.5px;font-weight:700;padding:3px 10px;border-radius:999px;background:var(--surface);border:1px solid var(--line)}
+.type{color:#fff;border:0;text-shadow:0 1px 1px rgba(0,0,0,.25)}
+.controls{display:flex;flex-direction:column;gap:10px;flex:none}
+.playrow{display:flex;justify-content:center}
+.play{display:flex;align-items:center;gap:10px;background:var(--ink);color:var(--bg);border:0;border-radius:999px;padding:11px 22px 11px 18px;font-weight:700}
+.bars{display:flex;gap:2px;align-items:center;height:16px}
+.bars i{display:block;width:3px;height:6px;border-radius:2px;background:currentColor}
+.play.playing .bars i{animation:bar .55s ease-in-out infinite alternate}
+.bars i:nth-child(2){animation-delay:.15s!important}.bars i:nth-child(3){animation-delay:.3s!important}
+@keyframes bar{to{height:16px}}
+.chosung{text-align:center;font:400 30px/1 var(--f-display);letter-spacing:.35em;padding-left:.35em}
+.answer input{width:100%;border:2px solid var(--line);background:var(--surface);border-radius:14px;padding:14px 16px;font-size:20px;text-align:center}
+.answer input:focus{border-color:var(--accent);outline:none}
+.answer input.shake{animation:shake .3s;border-color:var(--bad)}
+.answer input[readonly]{color:var(--muted)}
+@keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.result{text-align:center;min-height:30px;font-weight:700;font-size:17px}
+.result.good{color:var(--good)} .result.bad{color:var(--bad)}
+.result b{font:400 26px var(--f-display);color:var(--ink);margin-left:6px}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.keys{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 14px;font-size:12px;color:var(--muted)}
+kbd{font:500 11px var(--f-mono);border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:1px 5px;background:var(--surface);color:var(--ink)}
+
+/* 종료 화면 */
+#end{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+.end h2{font:400 34px/1.1 var(--f-display);margin:0}
+.big{font:500 48px/1 var(--f-mono);font-variant-numeric:tabular-nums}
+.missed{display:flex;flex-wrap:wrap;gap:6px}
+.btnrow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+
+/* 모달 */
+.modal{position:fixed;inset:0;z-index:20;background:var(--scrim);display:grid;place-items:center;
+  padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));overflow-y:auto}
+.sheet{width:100%;max-width:420px;background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:14px;max-height:100%;overflow-y:auto}
+.sheet-head{display:flex;align-items:center;justify-content:space-between}
+.sheet-head h3{margin:0;font:400 24px/1 var(--f-display)}
+.seg{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.seg button{border:1px solid var(--line);background:var(--stage);border-radius:10px;padding:9px 0;font-weight:500}
+.note{font-size:12.5px;color:var(--muted);margin:0}
+#shareImg{width:100%;border-radius:12px;border:1px solid var(--line);display:block}
+.linkbox{display:flex;gap:6px}
+.linkbox input{flex:1;min-width:0;border:1px solid var(--line);background:var(--stage);border-radius:10px;padding:9px 10px;font:500 12.5px var(--f-mono)}
+.toast{position:fixed;left:50%;bottom:max(24px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:999px;font-size:14px;z-index:30}
+footer{font-size:12px;color:var(--muted);text-align:center}
+footer a{color:inherit}
+@media (max-width:420px){.chip{padding:8px 0;font-size:13px}.gens{gap:6px}.brand h1{font-size:22px}.keys{display:none}.stage{min-height:200px}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ① 시작 화면 -->
+<main id="setup">
+  <div class="topbar">
+    <div class="brand">
+      <div class="wave" aria-hidden="true"><i style="height:9px"></i><i style="height:18px"></i><i style="height:24px"></i><i style="height:13px"></i><i style="height:7px"></i></div>
+      <h1>울음소리 도감 퀴즈</h1>
+    </div>
+    <button class="icon-btn gear" type="button" aria-label="설정"></button>
+  </div>
+  <section class="card">
+    <div class="label">출제 범위</div>
+    <div class="gens" id="gens"></div>
+    <div class="label">힌트 설정</div>
+    <div class="toggles">
+      <label class="tg"><span>검은 실루엣 보기<small>모습을 검게 가린 채로 보여줘요</small></span><span class="switch"><input type="checkbox" id="sw-sil" data-opt="sil"><b></b></span></label>
+      <label class="tg"><span>초성 힌트<small>정답 이름의 초성을 보여줘요 (예: ㅍㅋㅊ)</small></span><span class="switch"><input type="checkbox" id="sw-cho" data-opt="cho"><b></b></span></label>
+      <label class="tg"><span>등장 세대 힌트<small>몇 세대 포켓몬인지 알려줘요</small></span><span class="switch"><input type="checkbox" id="sw-gen" data-opt="gen"><b></b></span></label>
+      <label class="tg"><span>타입 표시<small>타입 배지를 보여줘요</small></span><span class="switch"><input type="checkbox" id="sw-type" data-opt="type"><b></b></span></label>
+    </div>
+    <button class="primary" id="startBtn" type="button">시작하기</button>
+    <div class="summary" id="summary"></div>
+  </section>
+  <footer>포켓몬 데이터·울음소리·이미지: <a href="https://pokeapi.co" target="_blank" rel="noopener">PokéAPI</a> · Pokémon © Nintendo / Creatures / GAME FREAK · 비상업 팬 프로젝트</footer>
+</main>
+
+<!-- ② 게임 화면 -->
+<main id="game" hidden>
+  <div class="topbar">
+    <button class="icon-btn" id="homeBtn" type="button" aria-label="처음으로"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>처음으로</button>
+    <div class="meta"><span id="progress">1 / 30</span><span class="ok" id="okCount">정답 0</span><span class="no" id="noCount">패스 0</span></div>
+    <button class="icon-btn gear" type="button" aria-label="설정"></button>
+  </div>
+  <div class="hintbar" role="group" aria-label="힌트">
+    <button class="hchip" type="button" data-opt="sil">실루엣</button>
+    <button class="hchip" type="button" data-opt="cho">초성</button>
+    <button class="hchip" type="button" data-opt="gen">세대</button>
+    <button class="hchip" type="button" data-opt="type">타입</button>
+  </div>
+  <div class="stage">
+    <span class="dexno" id="dexno">No. ????</span>
+    <div class="hints" id="hints"></div>
+    <img id="poke" alt="" class="sil loading">
+    <svg class="placeholder" id="placeholder" viewBox="0 0 200 200" aria-hidden="true">
+      <circle cx="100" cy="100" r="96" fill="var(--ph-fill)"/>
+      <circle cx="100" cy="100" r="78" fill="none" stroke="var(--ph-ring)" stroke-width="3"/>
+      <circle cx="100" cy="100" r="60" fill="none" stroke="var(--ph-ring)" stroke-width="3" stroke-dasharray="6 7"/>
+      <circle cx="100" cy="100" r="42" fill="var(--surface)" stroke="var(--ph-ring)" stroke-width="3"/>
+      <path d="M22 100h14l6-14 8 28 8-38 8 40 6-16h12M126 100h12l6-16 8 40 8-38 8 28 6-14h14" fill="none" stroke="var(--ph-ring)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+      <text x="100" y="117" text-anchor="middle" font-family="Do Hyeon, sans-serif" font-size="50" fill="var(--ph-mark)">?</text>
+    </svg>
+  </div>
+  <div class="controls">
+    <div class="playrow">
+      <button class="play" id="playBtn" type="button"><span class="bars" aria-hidden="true"><i></i><i></i><i></i></span>울음소리 듣기</button>
+    </div>
+    <div class="chosung" id="chosung" hidden></div>
+    <form class="answer" id="answerForm" autocomplete="off">
+      <input id="answerInput" type="text" placeholder="포켓몬 이름을 한글로 입력" aria-label="정답 입력" enterkeyhint="done" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+    </form>
+    <div class="result" id="result" aria-live="polite"></div>
+    <div class="actions">
+      <button class="ghost" id="revealBtn" type="button">정답 보기</button>
+      <button class="primary" id="nextBtn" type="button">넘어가기</button>
+    </div>
+    <div class="keys"><span><kbd>Enter</kbd> 정답 확인·다음</span><span><kbd>↑</kbd> 또는 <kbd>Esc</kbd> 다시 듣기</span><span><kbd>↓</kbd> 정답 보기</span><span><kbd>→</kbd> 넘어가기</span></div>
+  </div>
+</main>
+
+<!-- ③ 종료 화면 -->
+<main id="end" hidden>
+  <div class="topbar">
+    <div class="brand"><h1>결과</h1></div>
+    <button class="icon-btn gear" type="button" aria-label="설정"></button>
+  </div>
+  <section class="card end">
+    <h2 id="rankTitle">포켓몬 박사</h2>
+    <div class="big" id="finalScore">0 / 0</div>
+    <div id="finalDetail" style="color:var(--muted)"></div>
+    <div class="label" id="missedLabel">놓친 포켓몬</div>
+    <div class="missed" id="missed"></div>
+    <button class="primary" id="openShare" type="button">결과 공유하기</button>
+    <div class="btnrow">
+      <button class="ghost" id="againBtn" type="button">같은 설정으로 다시</button>
+      <button class="ghost" id="toSetup" type="button">처음으로</button>
+    </div>
+  </section>
+</main>
+
+<!-- 설정 모달 -->
+<div class="modal" id="settings" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="setTitle">
+    <div class="sheet-head"><h3 id="setTitle">설정</h3><button class="icon-btn close" type="button" aria-label="닫기">✕</button></div>
+    <label class="tg"><span>다크 모드<small>어두운 배경으로 바꿔요</small></span><span class="switch"><input type="checkbox" id="darkSw"><b></b></span></label>
+    <div class="label">문제 수</div>
+    <div class="seg" id="countSeg">
+      <button type="button" data-n="30">30</button><button type="button" data-n="50">50</button><button type="button" data-n="100">100</button><button type="button" data-n="0">전체</button>
+    </div>
+    <p class="note" id="countNote">선택한 세대의 포켓몬 수보다 많으면 전부 출제해요.</p>
+  </div>
+</div>
+
+<!-- 공유 모달 -->
+<div class="modal" id="share" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="shareTitle">
+    <div class="sheet-head"><h3 id="shareTitle">친구에게 자랑하기</h3><button class="icon-btn close" type="button" aria-label="닫기">✕</button></div>
+    <img id="shareImg" alt="내 퀴즈 결과 카드">
+    <div class="btnrow">
+      <button class="primary" id="saveImg" type="button">이미지 저장</button>
+      <button class="ghost" id="nativeShare" type="button">공유하기</button>
+    </div>
+    <div class="label">도전 링크 (같은 세대·문제 수로 시작)</div>
+    <div class="linkbox"><input id="shareLink" readonly aria-label="도전 링크"><button class="ghost" id="copyLink" type="button">복사</button></div>
+    <p class="note">결과 이미지에 QR 코드가 들어 있어서, 옆 친구가 휴대폰 카메라로 찍으면 바로 도전할 수 있어요.</p>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const DATA = [[1,"이상해씨",1,[12,4]],[2,"이상해풀",1,[12,4]],[3,"이상해꽃",1,[12,4]],[4,"파이리",1,[10]],[5,"리자드",1,[10]],[6,"리자몽",1,[10,3]],[7,"꼬부기",1,[11]],[8,"어니부기",1,[11]],[9,"거북왕",1,[11]],[10,"캐터피",1,[7]],[11,"단데기",1,[7]],[12,"버터플",1,[7,3]],[13,"뿔충이",1,[7,4]],[14,"딱충이",1,[7,4]],[15,"독침붕",1,[7,4]],[16,"구구",1,[1,3]],[17,"피죤",1,[1,3]],[18,"피죤투",1,[1,3]],[19,"꼬렛",1,[1]],[20,"레트라",1,[1]],[21,"깨비참",1,[1,3]],[22,"깨비드릴조",1,[1,3]],[23,"아보",1,[4]],[24,"아보크",1,[4]],[25,"피카츄",1,[13]],[26,"라이츄",1,[13]],[27,"모래두지",1,[5]],[28,"고지",1,[5]],[29,"니드런♀",1,[4]],[30,"니드리나",1,[4]],[31,"니드퀸",1,[4,5]],[32,"니드런♂",1,[4]],[33,"니드리노",1,[4]],[34,"니드킹",1,[4,5]],[35,"삐삐",1,[18]],[36,"픽시",1,[18]],[37,"식스테일",1,[10]],[38,"나인테일",1,[10]],[39,"푸린",1,[1,18]],[40,"푸크린",1,[1,18]],[41,"주뱃",1,[4,3]],[42,"골뱃",1,[4,3]],[43,"뚜벅쵸",1,[12,4]],[44,"냄새꼬",1,[12,4]],[45,"라플레시아",1,[12,4]],[46,"파라스",1,[7,12]],[47,"파라섹트",1,[7,12]],[48,"콘팡",1,[7,4]],[49,"도나리",1,[7,4]],[50,"디그다",1,[5]],[51,"닥트리오",1,[5]],[52,"나옹",1,[1]],[53,"페르시온",1,[1]],[54,"고라파덕",1,[11]],[55,"골덕",1,[11]],[56,"망키",1,[2]],[57,"성원숭",1,[2]],[58,"가디",1,[10]],[59,"윈디",1,[10]],[60,"발챙이",1,[11]],[61,"슈륙챙이",1,[11]],[62,"강챙이",1,[11,2]],[63,"캐이시",1,[14]],[64,"윤겔라",1,[14]],[65,"후딘",1,[14]],[66,"알통몬",1,[2]],[67,"근육몬",1,[2]],[68,"괴력몬",1,[2]],[69,"모다피",1,[12,4]],[70,"우츠동",1,[12,4]],[71,"우츠보트",1,[12,4]],[72,"왕눈해",1,[11,4]],[73,"독파리",1,[11,4]],[74,"꼬마돌",1,[6,5]],[75,"데구리",1,[6,5]],[76,"딱구리",1,[6,5]],[77,"포니타",1,[10]],[78,"날쌩마",1,[10]],[79,"야돈",1,[11,14]],[80,"야도란",1,[11,14]],[81,"코일",1,[13,9]],[82,"레어코일",1,[13,9]],[83,"파오리",1,[1,3]],[84,"두두",1,[1,3]],[85,"두트리오",1,[1,3]],[86,"쥬쥬",1,[11]],[87,"쥬레곤",1,[11,15]],[88,"질퍽이",1,[4]],[89,"질뻐기",1,[4]],[90,"셀러",1,[11]],[91,"파르셀",1,[11,15]],[92,"고오스",1,[8,4]],[93,"고우스트",1,[8,4]],[94,"팬텀",1,[8,4]],[95,"롱스톤",1,[6,5]],[96,"슬리프",1,[14]],[97,"슬리퍼",1,[14]],[98,"크랩",1,[11]],[99,"킹크랩",1,[11]],[100,"찌리리공",1,[13]],[101,"붐볼",1,[13]],[102,"아라리",1,[12,14]],[103,"나시",1,[12,14]],[104,"탕구리",1,[5]],[105,"텅구리",1,[5]],[106,"시라소몬",1,[2]],[107,"홍수몬",1,[2]],[108,"내루미",1,[1]],[109,"또가스",1,[4]],[110,"또도가스",1,[4]],[111,"뿔카노",1,[5,6]],[112,"코뿌리",1,[5,6]],[113,"럭키",1,[1]],[114,"덩쿠리",1,[12]],[115,"캥카",1,[1]],[116,"쏘드라",1,[11]],[117,"시드라",1,[11]],[118,"콘치",1,[11]],[119,"왕콘치",1,[11]],[120,"별가사리",1,[11]],[121,"아쿠스타",1,[11,14]],[122,"마임맨",1,[14,18]],[123,"스라크",1,[7,3]],[124,"루주라",1,[15,14]],[125,"에레브",1,[13]],[126,"마그마",1,[10]],[127,"쁘사이저",1,[7]],[128,"켄타로스",1,[1]],[129,"잉어킹",1,[11]],[130,"갸라도스",1,[11,3]],[131,"라프라스",1,[11,15]],[132,"메타몽",1,[1]],[133,"이브이",1,[1]],[134,"샤미드",1,[11]],[135,"쥬피썬더",1,[13]],[136,"부스터",1,[10]],[137,"폴리곤",1,[1]],[138,"암나이트",1,[6,11]],[139,"암스타",1,[6,11]],[140,"투구",1,[6,11]],[141,"투구푸스",1,[6,11]],[142,"프테라",1,[6,3]],[143,"잠만보",1,[1]],[144,"프리져",1,[15,3]],[145,"썬더",1,[13,3]],[146,"파이어",1,[10,3]],[147,"미뇽",1,[16]],[148,"신뇽",1,[16]],[149,"망나뇽",1,[16,3]],[150,"뮤츠",1,[14]],[151,"뮤",1,[14]],[152,"치코리타",2,[12]],[153,"베이리프",2,[12]],[154,"메가니움",2,[12]],[155,"브케인",2,[10]],[156,"마그케인",2,[10]],[157,"블레이범",2,[10]],[158,"리아코",2,[11]],[159,"엘리게이",2,[11]],[160,"장크로다일",2,[11]],[161,"꼬리선",2,[1]],[162,"다꼬리",2,[1]],[163,"부우부",2,[1,3]],[164,"야부엉",2,[1,3]],[165,"레디바",2,[7,3]],[166,"레디안",2,[7,3]],[167,"페이검",2,[7,4]],[168,"아리아도스",2,[7,4]],[169,"크로뱃",2,[4,3]],[170,"초라기",2,[11,13]],[171,"랜턴",2,[11,13]],[172,"피츄",2,[13]],[173,"삐",2,[18]],[174,"푸푸린",2,[1,18]],[175,"토게피",2,[18]],[176,"토게틱",2,[18,3]],[177,"네이티",2,[14,3]],[178,"네이티오",2,[14,3]],[179,"메리프",2,[13]],[180,"보송송",2,[13]],[181,"전룡",2,[13]],[182,"아르코",2,[12]],[183,"마릴",2,[11,18]],[184,"마릴리",2,[11,18]],[185,"꼬지모",2,[6]],[186,"왕구리",2,[11]],[187,"통통코",2,[12,3]],[188,"두코",2,[12,3]],[189,"솜솜코",2,[12,3]],[190,"에이팜",2,[1]],[191,"해너츠",2,[12]],[192,"해루미",2,[12]],[193,"왕자리",2,[7,3]],[194,"우파",2,[11,5]],[195,"누오",2,[11,5]],[196,"에브이",2,[14]],[197,"블래키",2,[17]],[198,"니로우",2,[17,3]],[199,"야도킹",2,[11,14]],[200,"무우마",2,[8]],[201,"안농",2,[14]],[202,"마자용",2,[14]],[203,"키링키",2,[1,14]],[204,"피콘",2,[7]],[205,"쏘콘",2,[7,9]],[206,"노고치",2,[1]],[207,"글라이거",2,[5,3]],[208,"강철톤",2,[9,5]],[209,"블루",2,[18]],[210,"그랑블루",2,[18]],[211,"침바루",2,[11,4]],[212,"핫삼",2,[7,9]],[213,"단단지",2,[7,6]],[214,"헤라크로스",2,[7,2]],[215,"포푸니",2,[17,15]],[216,"깜지곰",2,[1]],[217,"링곰",2,[1]],[218,"마그마그",2,[10]],[219,"마그카르고",2,[10,6]],[220,"꾸꾸리",2,[15,5]],[221,"메꾸리",2,[15,5]],[222,"코산호",2,[11,6]],[223,"총어",2,[11]],[224,"대포무노",2,[11]],[225,"딜리버드",2,[15,3]],[226,"만타인",2,[11,3]],[227,"무장조",2,[9,3]],[228,"델빌",2,[17,10]],[229,"헬가",2,[17,10]],[230,"킹드라",2,[11,16]],[231,"코코리",2,[5]],[232,"코리갑",2,[5]],[233,"폴리곤2",2,[1]],[234,"노라키",2,[1]],[235,"루브도",2,[1]],[236,"배루키",2,[2]],[237,"카포에라",2,[2]],[238,"뽀뽀라",2,[15,14]],[239,"에레키드",2,[13]],[240,"마그비",2,[10]],[241,"밀탱크",2,[1]],[242,"해피너스",2,[1]],[243,"라이코",2,[13]],[244,"앤테이",2,[10]],[245,"스이쿤",2,[11]],[246,"애버라스",2,[6,5]],[247,"데기라스",2,[6,5]],[248,"마기라스",2,[6,17]],[249,"루기아",2,[14,3]],[250,"칠색조",2,[10,3]],[251,"세레비",2,[14,12]],[252,"나무지기",3,[12]],[253,"나무돌이",3,[12]],[254,"나무킹",3,[12]],[255,"아차모",3,[10]],[256,"영치코",3,[10,2]],[257,"번치코",3,[10,2]],[258,"물짱이",3,[11]],[259,"늪짱이",3,[11,5]],[260,"대짱이",3,[11,5]],[261,"포챠나",3,[17]],[262,"그라에나",3,[17]],[263,"지그제구리",3,[1]],[264,"직구리",3,[1]],[265,"개무소",3,[7]],[266,"실쿤",3,[7]],[267,"뷰티플라이",3,[7,3]],[268,"카스쿤",3,[7]],[269,"독케일",3,[7,4]],[270,"연꽃몬",3,[11,12]],[271,"로토스",3,[11,12]],[272,"로파파",3,[11,12]],[273,"도토링",3,[12]],[274,"잎새코",3,[12,17]],[275,"다탱구",3,[12,17]],[276,"테일로",3,[1,3]],[277,"스왈로",3,[1,3]],[278,"갈모매",3,[11,3]],[279,"패리퍼",3,[11,3]],[280,"랄토스",3,[14,18]],[281,"킬리아",3,[14,18]],[282,"가디안",3,[14,18]],[283,"비구술",3,[7,11]],[284,"비나방",3,[7,3]],[285,"버섯꼬",3,[12]],[286,"버섯모",3,[12,2]],[287,"게을로",3,[1]],[288,"발바로",3,[1]],[289,"게을킹",3,[1]],[290,"토중몬",3,[7,5]],[291,"아이스크",3,[7,3]],[292,"껍질몬",3,[7,8]],[293,"소곤룡",3,[1]],[294,"노공룡",3,[1]],[295,"폭음룡",3,[1]],[296,"마크탕",3,[2]],[297,"하리뭉",3,[2]],[298,"루리리",3,[1,18]],[299,"코코파스",3,[6]],[300,"에나비",3,[1]],[301,"델케티",3,[1]],[302,"깜까미",3,[17,8]],[303,"입치트",3,[9,18]],[304,"가보리",3,[9,6]],[305,"갱도라",3,[9,6]],[306,"보스로라",3,[9,6]],[307,"요가랑",3,[2,14]],[308,"요가램",3,[2,14]],[309,"썬더라이",3,[13]],[310,"썬더볼트",3,[13]],[311,"플러시",3,[13]],[312,"마이농",3,[13]],[313,"볼비트",3,[7]],[314,"네오비트",3,[7]],[315,"로젤리아",3,[12,4]],[316,"꼴깍몬",3,[4]],[317,"꿀꺽몬",3,[4]],[318,"샤프니아",3,[11,17]],[319,"샤크니아",3,[11,17]],[320,"고래왕자",3,[11]],[321,"고래왕",3,[11]],[322,"둔타",3,[10,5]],[323,"폭타",3,[10,5]],[324,"코터스",3,[10]],[325,"피그점프",3,[14]],[326,"피그킹",3,[14]],[327,"얼루기",3,[1]],[328,"톱치",3,[5]],[329,"비브라바",3,[5,16]],[330,"플라이곤",3,[5,16]],[331,"선인왕",3,[12]],[332,"밤선인",3,[12,17]],[333,"파비코",3,[1,3]],[334,"파비코리",3,[16,3]],[335,"쟝고",3,[1]],[336,"세비퍼",3,[4]],[337,"루나톤",3,[6,14]],[338,"솔록",3,[6,14]],[339,"미꾸리",3,[11,5]],[340,"메깅",3,[11,5]],[341,"가재군",3,[11]],[342,"가재장군",3,[11,17]],[343,"오뚝군",3,[5,14]],[344,"점토도리",3,[5,14]],[345,"릴링",3,[6,12]],[346,"릴리요",3,[6,12]],[347,"아노딥스",3,[6,7]],[348,"아말도",3,[6,7]],[349,"빈티나",3,[11]],[350,"밀로틱",3,[11]],[351,"캐스퐁",3,[1]],[352,"켈리몬",3,[1]],[353,"어둠대신",3,[8]],[354,"다크펫",3,[8]],[355,"해골몽",3,[8]],[356,"미라몽",3,[8]],[357,"트로피우스",3,[12,3]],[358,"치렁",3,[14]],[359,"앱솔",3,[17]],[360,"마자",3,[14]],[361,"눈꼬마",3,[15]],[362,"얼음귀신",3,[15]],[363,"대굴레오",3,[15,11]],[364,"씨레오",3,[15,11]],[365,"씨카이저",3,[15,11]],[366,"진주몽",3,[11]],[367,"헌테일",3,[11]],[368,"분홍장이",3,[11]],[369,"시라칸",3,[11,6]],[370,"사랑동이",3,[11]],[371,"아공이",3,[16]],[372,"쉘곤",3,[16]],[373,"보만다",3,[16,3]],[374,"메탕",3,[9,14]],[375,"메탕구",3,[9,14]],[376,"메타그로스",3,[9,14]],[377,"레지락",3,[6]],[378,"레지아이스",3,[15]],[379,"레지스틸",3,[9]],[380,"라티아스",3,[16,14]],[381,"라티오스",3,[16,14]],[382,"가이오가",3,[11]],[383,"그란돈",3,[5]],[384,"레쿠쟈",3,[16,3]],[385,"지라치",3,[9,14]],[386,"테오키스",3,[14]],[387,"모부기",4,[12]],[388,"수풀부기",4,[12]],[389,"토대부기",4,[12,5]],[390,"불꽃숭이",4,[10]],[391,"파이숭이",4,[10,2]],[392,"초염몽",4,[10,2]],[393,"팽도리",4,[11]],[394,"팽태자",4,[11]],[395,"엠페르트",4,[11,9]],[396,"찌르꼬",4,[1,3]],[397,"찌르버드",4,[1,3]],[398,"찌르호크",4,[1,3]],[399,"비버니",4,[1]],[400,"비버통",4,[1,11]],[401,"귀뚤뚜기",4,[7]],[402,"귀뚤톡크",4,[7]],[403,"꼬링크",4,[13]],[404,"럭시오",4,[13]],[405,"렌트라",4,[13]],[406,"꼬몽울",4,[12,4]],[407,"로즈레이드",4,[12,4]],[408,"두개도스",4,[6]],[409,"램펄드",4,[6]],[410,"방패톱스",4,[6,9]],[411,"바리톱스",4,[6,9]],[412,"도롱충이",4,[7]],[413,"도롱마담",4,[7,12]],[414,"나메일",4,[7,3]],[415,"세꿀버리",4,[7,3]],[416,"비퀸",4,[7,3]],[417,"파치리스",4,[13]],[418,"브이젤",4,[11]],[419,"플로젤",4,[11]],[420,"체리버",4,[12]],[421,"체리꼬",4,[12]],[422,"깝질무",4,[11]],[423,"트리토돈",4,[11,5]],[424,"겟핸보숭",4,[1]],[425,"흔들풍손",4,[8,3]],[426,"둥실라이드",4,[8,3]],[427,"이어롤",4,[1]],[428,"이어롭",4,[1]],[429,"무우마직",4,[8]],[430,"돈크로우",4,[17,3]],[431,"나옹마",4,[1]],[432,"몬냥이",4,[1]],[433,"랑딸랑",4,[14]],[434,"스컹뿡",4,[4,17]],[435,"스컹탱크",4,[4,17]],[436,"동미러",4,[9,14]],[437,"동탁군",4,[9,14]],[438,"꼬지지",4,[6]],[439,"흉내내",4,[14,18]],[440,"핑복",4,[1]],[441,"페라페",4,[1,3]],[442,"화강돌",4,[8,17]],[443,"딥상어동",4,[16,5]],[444,"한바이트",4,[16,5]],[445,"한카리아스",4,[16,5]],[446,"먹고자",4,[1]],[447,"리오르",4,[2]],[448,"루카리오",4,[2,9]],[449,"히포포타스",4,[5]],[450,"하마돈",4,[5]],[451,"스콜피",4,[4,7]],[452,"드래피온",4,[4,17]],[453,"삐딱구리",4,[4,2]],[454,"독개굴",4,[4,2]],[455,"무스틈니",4,[12]],[456,"형광어",4,[11]],[457,"네오라이트",4,[11]],[458,"타만타",4,[11,3]],[459,"눈쓰개",4,[12,15]],[460,"눈설왕",4,[12,15]],[461,"포푸니라",4,[17,15]],[462,"자포코일",4,[13,9]],[463,"내룸벨트",4,[1]],[464,"거대코뿌리",4,[5,6]],[465,"덩쿠림보",4,[12]],[466,"에레키블",4,[13]],[467,"마그마번",4,[10]],[468,"토게키스",4,[18,3]],[469,"메가자리",4,[7,3]],[470,"리피아",4,[12]],[471,"글레이시아",4,[15]],[472,"글라이온",4,[5,3]],[473,"맘모꾸리",4,[15,5]],[474,"폴리곤Z",4,[1]],[475,"엘레이드",4,[14,2]],[476,"대코파스",4,[6,9]],[477,"야느와르몽",4,[8]],[478,"눈여아",4,[15,8]],[479,"로토무",4,[13,8]],[480,"유크시",4,[14]],[481,"엠라이트",4,[14]],[482,"아그놈",4,[14]],[483,"디아루가",4,[9,16]],[484,"펄기아",4,[11,16]],[485,"히드런",4,[10,9]],[486,"레지기가스",4,[1]],[487,"기라티나",4,[8,16]],[488,"크레세리아",4,[14]],[489,"피오네",4,[11]],[490,"마나피",4,[11]],[491,"다크라이",4,[17]],[492,"쉐이미",4,[12]],[493,"아르세우스",4,[1]],[494,"비크티니",5,[14,10]],[495,"주리비얀",5,[12]],[496,"샤비",5,[12]],[497,"샤로다",5,[12]],[498,"뚜꾸리",5,[10]],[499,"차오꿀",5,[10,2]],[500,"염무왕",5,[10,2]],[501,"수댕이",5,[11]],[502,"쌍검자비",5,[11]],[503,"대검귀",5,[11]],[504,"보르쥐",5,[1]],[505,"보르그",5,[1]],[506,"요테리",5,[1]],[507,"하데리어",5,[1]],[508,"바랜드",5,[1]],[509,"쌔비냥",5,[17]],[510,"레파르다스",5,[17]],[511,"야나프",5,[12]],[512,"야나키",5,[12]],[513,"바오프",5,[10]],[514,"바오키",5,[10]],[515,"앗차프",5,[11]],[516,"앗차키",5,[11]],[517,"몽나",5,[14]],[518,"몽얌나",5,[14]],[519,"콩둘기",5,[1,3]],[520,"유토브",5,[1,3]],[521,"켄호로우",5,[1,3]],[522,"줄뮤마",5,[13]],[523,"제브라이카",5,[13]],[524,"단굴",5,[6]],[525,"암트르",5,[6]],[526,"기가이어스",5,[6]],[527,"또르박쥐",5,[14,3]],[528,"맘박쥐",5,[14,3]],[529,"두더류",5,[5]],[530,"몰드류",5,[5,9]],[531,"다부니",5,[1]],[532,"으랏차",5,[2]],[533,"토쇠골",5,[2]],[534,"노보청",5,[2]],[535,"동챙이",5,[11]],[536,"두까비",5,[11,5]],[537,"두빅굴",5,[11,5]],[538,"던지미",5,[2]],[539,"타격귀",5,[2]],[540,"두르보",5,[7,12]],[541,"두르쿤",5,[7,12]],[542,"모아머",5,[7,12]],[543,"마디네",5,[7,4]],[544,"휠구",5,[7,4]],[545,"펜드라",5,[7,4]],[546,"소미안",5,[12,18]],[547,"엘풍",5,[12,18]],[548,"치릴리",5,[12]],[549,"드레디어",5,[12]],[550,"배쓰나이",5,[11]],[551,"깜눈크",5,[5,17]],[552,"악비르",5,[5,17]],[553,"악비아르",5,[5,17]],[554,"달막화",5,[10]],[555,"불비달마",5,[10]],[556,"마라카치",5,[12]],[557,"돌살이",5,[7,6]],[558,"암팰리스",5,[7,6]],[559,"곤율랭",5,[17,2]],[560,"곤율거니",5,[17,2]],[561,"심보러",5,[14,3]],[562,"데스마스",5,[8]],[563,"데스니칸",5,[8]],[564,"프로토가",5,[11,6]],[565,"늑골라",5,[11,6]],[566,"아켄",5,[6,3]],[567,"아케오스",5,[6,3]],[568,"깨봉이",5,[4]],[569,"더스트나",5,[4]],[570,"조로아",5,[17]],[571,"조로아크",5,[17]],[572,"치라미",5,[1]],[573,"치라치노",5,[1]],[574,"고디탱",5,[14]],[575,"고디보미",5,[14]],[576,"고디모아젤",5,[14]],[577,"유니란",5,[14]],[578,"듀란",5,[14]],[579,"란쿨루스",5,[14]],[580,"꼬지보리",5,[11,3]],[581,"스완나",5,[11,3]],[582,"바닐프티",5,[15]],[583,"바닐리치",5,[15]],[584,"배바닐라",5,[15]],[585,"사철록",5,[1,12]],[586,"바라철록",5,[1,12]],[587,"에몽가",5,[13,3]],[588,"딱정곤",5,[7]],[589,"슈바르고",5,[7,9]],[590,"깜놀버슬",5,[12,4]],[591,"뽀록나",5,[12,4]],[592,"탱그릴",5,[11,8]],[593,"탱탱겔",5,[11,8]],[594,"맘복치",5,[11]],[595,"파쪼옥",5,[7,13]],[596,"전툴라",5,[7,13]],[597,"철시드",5,[12,9]],[598,"너트령",5,[12,9]],[599,"기어르",5,[9]],[600,"기기어르",5,[9]],[601,"기기기어르",5,[9]],[602,"저리어",5,[13]],[603,"저리릴",5,[13]],[604,"저리더프",5,[13]],[605,"리그레",5,[14]],[606,"벰크",5,[14]],[607,"불켜미",5,[8,10]],[608,"램프라",5,[8,10]],[609,"샹델라",5,[8,10]],[610,"터검니",5,[16]],[611,"액슨도",5,[16]],[612,"액스라이즈",5,[16]],[613,"코고미",5,[15]],[614,"툰베어",5,[15]],[615,"프리지오",5,[15]],[616,"쪼마리",5,[7]],[617,"어지리더",5,[7]],[618,"메더",5,[5,13]],[619,"비조푸",5,[2]],[620,"비조도",5,[2]],[621,"크리만",5,[16]],[622,"골비람",5,[5,8]],[623,"골루그",5,[5,8]],[624,"자망칼",5,[17,9]],[625,"절각참",5,[17,9]],[626,"버프론",5,[1]],[627,"수리둥보",5,[1,3]],[628,"워글",5,[1,3]],[629,"벌차이",5,[17,3]],[630,"버랜지나",5,[17,3]],[631,"앤티골",5,[10]],[632,"아이앤트",5,[7,9]],[633,"모노두",5,[17,16]],[634,"디헤드",5,[17,16]],[635,"삼삼드래",5,[17,16]],[636,"활화르바",5,[7,10]],[637,"불카모스",5,[7,10]],[638,"코바르온",5,[9,2]],[639,"테라키온",5,[6,2]],[640,"비리디온",5,[12,2]],[641,"토네로스",5,[3]],[642,"볼트로스",5,[13,3]],[643,"레시라무",5,[16,10]],[644,"제크로무",5,[16,13]],[645,"랜드로스",5,[5,3]],[646,"큐레무",5,[16,15]],[647,"케르디오",5,[11,2]],[648,"메로엣타",5,[1,14]],[649,"게노세크트",5,[7,9]],[650,"도치마론",6,[12]],[651,"도치보구",6,[12]],[652,"브리가론",6,[12,2]],[653,"푸호꼬",6,[10]],[654,"테르나",6,[10]],[655,"마폭시",6,[10,14]],[656,"개구마르",6,[11]],[657,"개굴반장",6,[11]],[658,"개굴닌자",6,[11,17]],[659,"파르빗",6,[1]],[660,"파르토",6,[1,5]],[661,"화살꼬빈",6,[1,3]],[662,"불화살빈",6,[10,3]],[663,"파이어로",6,[10,3]],[664,"분이벌레",6,[7]],[665,"분떠도리",6,[7]],[666,"비비용",6,[7,3]],[667,"레오꼬",6,[10,1]],[668,"화염레오",6,[10,1]],[669,"플라베베",6,[18]],[670,"플라엣테",6,[18]],[671,"플라제스",6,[18]],[672,"메이클",6,[12]],[673,"고고트",6,[12]],[674,"판짱",6,[2]],[675,"부란다",6,[2,17]],[676,"트리미앙",6,[1]],[677,"냐스퍼",6,[14]],[678,"냐오닉스",6,[14]],[679,"단칼빙",6,[9,8]],[680,"쌍검킬",6,[9,8]],[681,"킬가르도",6,[9,8]],[682,"슈쁘",6,[18]],[683,"프레프티르",6,[18]],[684,"나룸퍼프",6,[18]],[685,"나루림",6,[18]],[686,"오케이징",6,[17,14]],[687,"칼라마네로",6,[17,14]],[688,"거북손손",6,[6,11]],[689,"거북손데스",6,[6,11]],[690,"수레기",6,[4,11]],[691,"드래캄",6,[4,16]],[692,"완철포",6,[11]],[693,"블로스터",6,[11]],[694,"목도리키텔",6,[13,1]],[695,"일레도리자드",6,[13,1]],[696,"티고라스",6,[6,16]],[697,"견고라스",6,[6,16]],[698,"아마루스",6,[6,15]],[699,"아마루르가",6,[6,15]],[700,"님피아",6,[18]],[701,"루차불",6,[2,3]],[702,"데덴네",6,[13,18]],[703,"멜리시",6,[6,18]],[704,"미끄메라",6,[16]],[705,"미끄네일",6,[16]],[706,"미끄래곤",6,[16]],[707,"클레피",6,[9,18]],[708,"나목령",6,[8,12]],[709,"대로트",6,[8,12]],[710,"호바귀",6,[8,12]],[711,"펌킨인",6,[8,12]],[712,"꽁어름",6,[15]],[713,"크레베이스",6,[15]],[714,"음뱃",6,[3,16]],[715,"음번",6,[3,16]],[716,"제르네아스",6,[18]],[717,"이벨타르",6,[17,3]],[718,"지가르데",6,[16,5]],[719,"디안시",6,[6,18]],[720,"후파",6,[14,8]],[721,"볼케니온",6,[10,11]],[722,"나몰빼미",7,[12,3]],[723,"빼미스로우",7,[12,3]],[724,"모크나이퍼",7,[12,8]],[725,"냐오불",7,[10]],[726,"냐오히트",7,[10]],[727,"어흥염",7,[10,17]],[728,"누리공",7,[11]],[729,"키요공",7,[11]],[730,"누리레느",7,[11,18]],[731,"콕코구리",7,[1,3]],[732,"크라파",7,[1,3]],[733,"왕큰부리",7,[1,3]],[734,"영구스",7,[1]],[735,"형사구스",7,[1]],[736,"턱지충이",7,[7]],[737,"전지충이",7,[7,13]],[738,"투구뿌논",7,[7,13]],[739,"오기지게",7,[2]],[740,"모단단게",7,[2,15]],[741,"춤추새",7,[10,3]],[742,"에블리",7,[7,18]],[743,"에리본",7,[7,18]],[744,"암멍이",7,[6]],[745,"루가루암",7,[6]],[746,"약어리",7,[11]],[747,"시마사리",7,[4,11]],[748,"더시마사리",7,[4,11]],[749,"머드나기",7,[5]],[750,"만마드",7,[5]],[751,"물거미",7,[11,7]],[752,"깨비물거미",7,[11,7]],[753,"짜랑랑",7,[12]],[754,"라란티스",7,[12]],[755,"자마슈",7,[12,18]],[756,"마셰이드",7,[12,18]],[757,"야도뇽",7,[4,10]],[758,"염뉴트",7,[4,10]],[759,"포곰곰",7,[1,2]],[760,"이븐곰",7,[1,2]],[761,"달콤아",7,[12]],[762,"달무리나",7,[12]],[763,"달코퀸",7,[12]],[764,"큐아링",7,[18]],[765,"하랑우탄",7,[1,14]],[766,"내던숭이",7,[2]],[767,"꼬시레",7,[7,11]],[768,"갑주무사",7,[7,11]],[769,"모래꿍",7,[8,5]],[770,"모래성이당",7,[8,5]],[771,"해무기",7,[11]],[772,"타입:널",7,[1]],[773,"실버디",7,[1]],[774,"메테노",7,[6,3]],[775,"자말라",7,[1]],[776,"폭거북스",7,[10,16]],[777,"토게데마루",7,[13,9]],[778,"따라큐",7,[8,18]],[779,"치갈기",7,[11,14]],[780,"할비롱",7,[1,16]],[781,"타타륜",7,[8,12]],[782,"짜랑꼬",7,[16]],[783,"짜랑고우",7,[16,2]],[784,"짜랑고우거",7,[16,2]],[785,"카푸꼬꼬꼭",7,[13,18]],[786,"카푸나비나",7,[14,18]],[787,"카푸브루루",7,[12,18]],[788,"카푸느지느",7,[11,18]],[789,"코스모그",7,[14]],[790,"코스모움",7,[14]],[791,"솔가레오",7,[14,9]],[792,"루나아라",7,[14,8]],[793,"텅비드",7,[6,4]],[794,"매시붕",7,[7,2]],[795,"페로코체",7,[7,2]],[796,"전수목",7,[13]],[797,"철화구야",7,[9,3]],[798,"종이신도",7,[12,9]],[799,"악식킹",7,[17,16]],[800,"네크로즈마",7,[14]],[801,"마기아나",7,[9,18]],[802,"마샤도",7,[2,8]],[803,"베베놈",7,[4]],[804,"아고용",7,[4,16]],[805,"차곡차곡",7,[6,9]],[806,"두파팡",7,[10,8]],[807,"제라오라",7,[13]],[808,"멜탄",7,[9]],[809,"멜메탈",7,[9]],[810,"흥나숭",8,[12]],[811,"채키몽",8,[12]],[812,"고릴타",8,[12]],[813,"염버니",8,[10]],[814,"래비풋",8,[10]],[815,"에이스번",8,[10]],[816,"울머기",8,[11]],[817,"누겔레온",8,[11]],[818,"인텔리레온",8,[11]],[819,"탐리스",8,[1]],[820,"요씽리스",8,[1]],[821,"파라꼬",8,[3]],[822,"파크로우",8,[3]],[823,"아머까오",8,[3,9]],[824,"두루지벌레",8,[7]],[825,"레돔벌레",8,[7,14]],[826,"이올브",8,[7,14]],[827,"훔처우",8,[17]],[828,"폭슬라이",8,[17]],[829,"꼬모카",8,[12]],[830,"백솜모카",8,[12]],[831,"우르",8,[1]],[832,"배우르",8,[1]],[833,"깨물부기",8,[11]],[834,"갈가부기",8,[11,6]],[835,"멍파치",8,[13]],[836,"펄스멍",8,[13]],[837,"탄동",8,[6]],[838,"탄차곤",8,[6,10]],[839,"석탄산",8,[6,10]],[840,"과사삭벌레",8,[12,16]],[841,"애프룡",8,[12,16]],[842,"단지래플",8,[12,16]],[843,"모래뱀",8,[5]],[844,"사다이사",8,[5]],[845,"윽우지",8,[3,11]],[846,"찌로꼬치",8,[11]],[847,"꼬치조",8,[11]],[848,"일레즌",8,[13,4]],[849,"스트린더",8,[13,4]],[850,"태우지네",8,[10,7]],[851,"다태우지네",8,[10,7]],[852,"때때무노",8,[2]],[853,"케오퍼스",8,[2]],[854,"데인차",8,[8]],[855,"포트데스",8,[8]],[856,"몸지브림",8,[14]],[857,"손지브림",8,[14]],[858,"브리무음",8,[14,18]],[859,"메롱꿍",8,[17,18]],[860,"쏘겨모",8,[17,18]],[861,"오롱털",8,[17,18]],[862,"가로막구리",8,[17,1]],[863,"나이킹",8,[9]],[864,"산호르곤",8,[8]],[865,"창파나이트",8,[2]],[866,"마임꽁꽁",8,[15,14]],[867,"데스판",8,[5,8]],[868,"마빌크",8,[18]],[869,"마휘핑",8,[18]],[870,"대여르",8,[2]],[871,"찌르성게",8,[13]],[872,"누니머기",8,[15,7]],[873,"모스노우",8,[15,7]],[874,"돌헨진",8,[6]],[875,"빙큐보",8,[15]],[876,"에써르",8,[14,1]],[877,"모르페코",8,[13,17]],[878,"끼리동",8,[9]],[879,"대왕끼리동",8,[9]],[880,"파치래곤",8,[13,16]],[881,"파치르돈",8,[13,15]],[882,"어래곤",8,[11,16]],[883,"어치르돈",8,[11,15]],[884,"두랄루돈",8,[9,16]],[885,"드라꼰",8,[16,8]],[886,"드래런치",8,[16,8]],[887,"드래펄트",8,[16,8]],[888,"자시안",8,[18]],[889,"자마젠타",8,[2]],[890,"무한다이노",8,[4,16]],[891,"치고마",8,[2]],[892,"우라오스",8,[2,17]],[893,"자루도",8,[17,12]],[894,"레지에레키",8,[13]],[895,"레지드래고",8,[16]],[896,"블리자포스",8,[15]],[897,"레이스포스",8,[8]],[898,"버드렉스",8,[14,12]],[899,"신비록",8,[1,14]],[900,"사마자르",8,[7,6]],[901,"다투곰",8,[5,1]],[902,"대쓰여너",8,[11,8]],[903,"포푸니크",8,[2,4]],[904,"장침바루",8,[17,4]],[905,"러브로스",8,[18,3]],[906,"나오하",9,[12]],[907,"나로테",9,[12]],[908,"마스카나",9,[12,17]],[909,"뜨아거",9,[10]],[910,"악뜨거",9,[10]],[911,"라우드본",9,[10,8]],[912,"꾸왁스",9,[11]],[913,"아꾸왁",9,[11]],[914,"웨이니발",9,[11,2]],[915,"맛보돈",9,[1]],[916,"퍼퓨돈",9,[1]],[917,"타랜툴라",9,[7]],[918,"트래피더",9,[7]],[919,"콩알뚜기",9,[7]],[920,"엑스레그",9,[7,17]],[921,"빠모",9,[13]],[922,"빠모트",9,[13,2]],[923,"빠르모트",9,[13,2]],[924,"두리쥐",9,[1]],[925,"파밀리쥐",9,[1]],[926,"쫀도기",9,[18]],[927,"바우첼",9,[18]],[928,"미니브",9,[12,1]],[929,"올리뇨",9,[12,1]],[930,"올리르바",9,[12,1]],[931,"시비꼬",9,[1,3]],[932,"베베솔트",9,[6]],[933,"스태솔트",9,[6]],[934,"콜로솔트",9,[6]],[935,"카르본",9,[10]],[936,"카디나르마",9,[10,14]],[937,"파라블레이즈",9,[10,8]],[938,"빈나두",9,[13]],[939,"찌리배리",9,[13]],[940,"찌리비",9,[13,3]],[941,"찌리비크",9,[13,3]],[942,"오라티프",9,[17]],[943,"마피티프",9,[17]],[944,"땃쭈르",9,[4,1]],[945,"태깅구르",9,[4,1]],[946,"그푸리",9,[12,8]],[947,"공푸리",9,[12,8]],[948,"들눈해",9,[5,12]],[949,"육파리",9,[5,12]],[950,"절벼게",9,[6]],[951,"캡싸이",9,[12]],[952,"스코빌런",9,[12,10]],[953,"구르데",9,[7]],[954,"베라카스",9,[7,14]],[955,"하느라기",9,[14]],[956,"클레스퍼트라",9,[14]],[957,"어리짱",9,[18,9]],[958,"벼리짱",9,[18,9]],[959,"두드리짱",9,[18,9]],[960,"바다그다",9,[11]],[961,"바닥트리오",9,[11]],[962,"떨구새",9,[3,17]],[963,"맨돌핀",9,[11]],[964,"돌핀맨",9,[11]],[965,"부르롱",9,[9,4]],[966,"부르르룸",9,[9,4]],[967,"모토마",9,[16,1]],[968,"꿈트렁",9,[9]],[969,"초롱순",9,[6,4]],[970,"킬라플로르",9,[6,4]],[971,"망망이",9,[8]],[972,"묘두기",9,[8]],[973,"꼬이밍고",9,[3,2]],[974,"터벅고래",9,[15]],[975,"우락고래",9,[15]],[976,"가비루사",9,[11,14]],[977,"어써러셔",9,[11]],[978,"싸리용",9,[16,11]],[979,"저승갓숭",9,[2,8]],[980,"토오",9,[4,5]],[981,"키키링",9,[1,14]],[982,"노고고치",9,[1]],[983,"대도각참",9,[17,9]],[984,"위대한엄니",9,[5,2]],[985,"우렁찬꼬리",9,[18,14]],[986,"사나운버섯",9,[12,17]],[987,"날개치는머리",9,[8,18]],[988,"땅을기는날개",9,[7,2]],[989,"모래털가죽",9,[13,5]],[990,"무쇠바퀴",9,[5,9]],[991,"무쇠보따리",9,[15,11]],[992,"무쇠손",9,[2,13]],[993,"무쇠머리",9,[17,3]],[994,"무쇠독나방",9,[10,4]],[995,"무쇠가시",9,[6,13]],[996,"드니차",9,[16,15]],[997,"드니꽁",9,[16,15]],[998,"드닐레이브",9,[16,15]],[999,"모으령",9,[8]],[1000,"타부자고",9,[9,8]],[1001,"총지엔",9,[17,12]],[1002,"파오젠",9,[17,15]],[1003,"딩루",9,[17,5]],[1004,"위유이",9,[17,10]],[1005,"고동치는달",9,[16,17]],[1006,"무쇠무인",9,[18,2]],[1007,"코라이돈",9,[2,16]],[1008,"미라이돈",9,[13,16]],[1009,"굽이치는물결",9,[11,16]],[1010,"무쇠잎새",9,[12,14]],[1011,"과미르",9,[12,16]],[1012,"차데스",9,[12,8]],[1013,"그우린차",9,[12,8]],[1014,"조타구",9,[4,2]],[1015,"이야후",9,[4,14]],[1016,"기로치",9,[4,18]],[1017,"오거폰",9,[12]],[1018,"브리두라스",9,[9,16]],[1019,"과미드라",9,[12,16]],[1020,"꿰뚫는화염",9,[10,16]],[1021,"날뛰는우레",9,[13,16]],[1022,"무쇠암석",9,[6,14]],[1023,"무쇠감투",9,[9,14]],[1024,"테라파고스",9,[1]],[1025,"복숭악동",9,[4,8]]]; // [도감번호, 한글이름, 세대, [타입id...]]
+const TYPES = {1:["노말","#9fa19f"],2:["격투","#ff8000"],3:["비행","#81b9ef"],4:["독","#9141cb"],5:["땅","#915121"],6:["바위","#afa981"],7:["벌레","#91a119"],8:["고스트","#704170"],9:["강철","#60a1b8"],10:["불꽃","#e62829"],11:["물","#2980ef"],12:["풀","#3fa129"],13:["전기","#fac000"],14:["에스퍼","#ef4179"],15:["얼음","#3dcef3"],16:["드래곤","#5060e1"],17:["악","#624d4e"],18:["페어리","#ef70ef"]};
+
+// 이미지·울음소리 경로 (assets 폴더에 직접 받아뒀다면 LOCAL을 true로)
+const LOCAL = false;
+const IMG = id => LOCAL ? `assets/images/${id}.png` : `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
+const IMG_FB = id => `https://cdn.jsdelivr.net/gh/PokeAPI/sprites@master/sprites/pokemon/other/official-artwork/${id}.png`;
+const CRY = id => LOCAL ? `assets/cries/${id}.ogg` : `https://raw.githubusercontent.com/PokeAPI/cries/main/cries/pokemon/latest/${id}.ogg`;
+const CRY_FB = id => `https://cdn.jsdelivr.net/gh/PokeAPI/cries@main/cries/pokemon/latest/${id}.ogg`;
+
+const $ = s => document.getElementById(s);
+const CHO = "ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ";
+const chosung = s => [...s].map(c => { const k = c.charCodeAt(0) - 0xAC00; return (k >= 0 && k < 11172) ? CHO[Math.floor(k / 588)] : (/[a-zA-Z0-9]/.test(c) ? c : ""); }).join("");
+const norm = s => s.normalize("NFC").replace(/[\s.:·\-'’♀♂]/g, "").toLowerCase();
+const genLabel = g => g === 0 ? "전체 세대" : `${g}세대`;
+const pool = g => g === 0 ? DATA : DATA.filter(d => d[2] === g);
+
+// ---------- 설정 상태 ----------
+const S = {gen: 0, count: 30, theme: null, opts: {sil: true, cho: false, gen: false, type: false}};
+try { const s = JSON.parse(localStorage.getItem("cryquiz2") || "null"); if (s) { Object.assign(S, s); S.opts = {...{sil:true,cho:false,gen:false,type:false}, ...s.opts}; } } catch (e) {}
+// 공유 링크로 들어온 경우 (?gen=1&n=30)
+const qp = new URLSearchParams(location.search);
+if (qp.has("gen")) { const g = +qp.get("gen"); if (g >= 0 && g <= 9) S.gen = g; }
+if (qp.has("n")) { const n = +qp.get("n"); if ([0,30,50,100].includes(n)) S.count = n; }
+const save = () => { try { localStorage.setItem("cryquiz2", JSON.stringify(S)); } catch (e) {} };
+
+// 테마
+const mq = window.matchMedia("(prefers-color-scheme: dark)");
+const isDark = () => S.theme ? S.theme === "dark" : mq.matches;
+function applyTheme(){ if (S.theme) document.documentElement.dataset.theme = S.theme; else delete document.documentElement.dataset.theme; $("darkSw").checked = isDark(); }
+mq.addEventListener?.("change", applyTheme);
+$("darkSw").addEventListener("change", e => { S.theme = e.target.checked ? "dark" : "light"; applyTheme(); save(); });
+applyTheme();
+
+// 톱니바퀴 아이콘
+const GEAR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
+document.querySelectorAll(".gear").forEach(b => { b.innerHTML = GEAR; b.onclick = () => openModal("settings"); });
+
+// 모달
+let lastFocus = null;
+function openModal(id){ lastFocus = document.activeElement; $(id).hidden = false; $(id).querySelector(".close").focus(); }
+function closeModal(id){ $(id).hidden = true; if (id === "settings" && !$("game").hidden && !G.done) $("answerInput").focus(); else lastFocus?.focus?.(); }
+document.querySelectorAll(".modal").forEach(m => {
+  m.addEventListener("click", e => { if (e.target === m) closeModal(m.id); });
+  m.querySelector(".close").onclick = () => closeModal(m.id);
+});
+const modalOpen = () => [...document.querySelectorAll(".modal")].some(m => !m.hidden);
+
+// 문제 수
+function renderCount(){
+  $("countSeg").querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", +b.dataset.n === S.count ? "true" : "false"));
+  renderSummary();
+}
+$("countSeg").querySelectorAll("button").forEach(b => b.onclick = () => { S.count = +b.dataset.n; save(); renderCount(); $("countNote").textContent = $("game").hidden ? "선택한 세대의 포켓몬 수보다 많으면 전부 출제해요." : "다음 게임부터 적용돼요."; });
+
+// 세대 선택
+const gensEl = $("gens");
+[0,1,2,3,4,5,6,7,8,9].forEach(g => {
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "chip"; b.dataset.gen = g;
+  b.innerHTML = g === 0 ? `전체<small>${DATA.length}</small>` : `${g}세대<small>${pool(g).length}</small>`;
+  b.onclick = () => { S.gen = g; save(); renderGens(); };
+  gensEl.appendChild(b);
+});
+function renderGens(){ gensEl.querySelectorAll(".chip").forEach(c => c.setAttribute("aria-pressed", +c.dataset.gen === S.gen ? "true" : "false")); renderSummary(); }
+function deckSize(){ const p = pool(S.gen).length; return S.count === 0 ? p : Math.min(S.count, p); }
+function renderSummary(){ $("summary").textContent = `${genLabel(S.gen)}에서 ${deckSize()}문제 출제 · 문제 수는 오른쪽 위 설정에서 바꿀 수 있어요`; }
+
+// 힌트 옵션 (시작 화면 스위치 + 게임 화면 칩이 같은 값을 공유)
+function renderOpts(){
+  document.querySelectorAll("input[data-opt]").forEach(i => i.checked = S.opts[i.dataset.opt]);
+  document.querySelectorAll(".hchip").forEach(b => b.setAttribute("aria-pressed", S.opts[b.dataset.opt] ? "true" : "false"));
+}
+document.querySelectorAll("input[data-opt]").forEach(i => i.addEventListener("change", () => { S.opts[i.dataset.opt] = i.checked; save(); renderOpts(); }));
+document.querySelectorAll(".hchip").forEach(b => b.onclick = () => { S.opts[b.dataset.opt] = !S.opts[b.dataset.opt]; save(); renderOpts(); paintHints(); if (!G.done) $("answerInput").focus(); });
+
+// ---------- 화면 전환 ----------
+function show(id){ ["setup","game","end"].forEach(s => $(s).hidden = s !== id); window.scrollTo(0, 0); }
+window.addEventListener("hashchange", () => { if (location.hash !== "#play" && !$("game").hidden) { audio.pause(); show("setup"); } });
+
+// ---------- 게임 ----------
+const G = {deck: [], i: 0, ok: 0, pass: 0, done: false, doneAt: 0, missed: []};
+const audio = new Audio(); audio.preload = "auto";
+const img = $("poke");
+
+function shuffle(a){ for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+function start(){
+  const deck = shuffle(pool(S.gen).slice()).slice(0, deckSize());
+  Object.assign(G, {deck, i: 0, ok: 0, pass: 0, missed: [], gen: S.gen});
+  show("game");
+  if (location.hash !== "#play") location.hash = "play";
+  render();
+}
+
+function loadImage(id){
+  // 실루엣을 먼저 씌우고, 새 이미지가 다 받아진 뒤에만 보이게 함 (정답 노출 방지)
+  img.classList.remove("revealing");
+  img.classList.add("sil", "loading");
+  img.removeAttribute("src");
+  delete img.dataset.fb;
+  img.onload = () => img.classList.remove("loading");
+  img.onerror = () => { if (!img.dataset.fb) { img.dataset.fb = 1; img.src = IMG_FB(id); } };
+  void img.offsetWidth; // 스타일 적용을 먼저 확정
+  img.src = IMG(id);
+}
+
+function paintHints(){
+  if (!G.deck.length) return;
+  const [id, name, gen, types] = G.deck[G.i];
+  const reveal = G.done;
+  img.hidden = !(S.opts.sil || reveal);
+  $("placeholder").style.display = img.hidden ? "" : "none";
+  const h = [];
+  if (S.opts.gen || reveal) h.push(`<span class="pill">${gen}세대</span>`);
+  if (S.opts.type || reveal) types.forEach(t => h.push(`<span class="pill type" style="background:${TYPES[t][1]}">${TYPES[t][0]}</span>`));
+  $("hints").innerHTML = h.join("");
+  $("chosung").hidden = !S.opts.cho || reveal;
+  $("chosung").textContent = chosung(name);
+}
+
+function render(){
+  const [id] = G.deck[G.i];
+  G.done = false;
+  $("progress").textContent = `${G.i + 1} / ${G.deck.length}`;
+  $("okCount").textContent = `정답 ${G.ok}`; $("noCount").textContent = `패스 ${G.pass}`;
+  $("dexno").textContent = "No. ????";
+  img.alt = "정체를 맞혀야 하는 포켓몬";
+  loadImage(id);
+  paintHints();
+  $("result").className = "result"; $("result").textContent = "";
+  $("nextBtn").textContent = "넘어가기"; $("revealBtn").disabled = false;
+  const inp = $("answerInput");
+  inp.blur(); inp.value = ""; inp.readOnly = false; inp.classList.remove("shake");
+  if (!modalOpen()) inp.focus();
+  audio.pause();
+  delete audio.dataset.fb;
+  audio.onerror = () => { if (!audio.dataset.fb) { audio.dataset.fb = 1; audio.src = CRY_FB(id); } };
+  audio.src = CRY(id);
+  const nx = G.deck[G.i + 1]; if (nx) new Image().src = IMG(nx[0]);
+}
+
+function play(){
+  try { audio.currentTime = 0; } catch (e) {}
+  audio.play().catch(() => toast("울음소리를 재생하지 못했어요. 다시 눌러 주세요"));
+}
+audio.addEventListener("play", () => $("playBtn").classList.add("playing"));
+["ended","pause"].forEach(e => audio.addEventListener(e, () => $("playBtn").classList.remove("playing")));
+
+function finish(correct){
+  if (G.done) return;
+  G.done = true; G.doneAt = performance.now();
+  const [id, name] = G.deck[G.i];
+  if (correct) G.ok++; else { G.pass++; G.missed.push(name); }
+  $("okCount").textContent = `정답 ${G.ok}`; $("noCount").textContent = `패스 ${G.pass}`;
+  paintHints();
+  img.classList.add("revealing");
+  img.classList.remove("sil");
+  img.alt = name;
+  $("dexno").textContent = `No. ${String(id).padStart(4, "0")}`;
+  $("result").className = "result " + (correct ? "good" : "bad");
+  $("result").innerHTML = (correct ? "정답!" : "정답은") + `<b>${name}</b>`;
+  const inp = $("answerInput"); inp.readOnly = true; if (!correct) inp.value = "";
+  $("revealBtn").disabled = true;
+  $("nextBtn").textContent = G.i + 1 < G.deck.length ? "다음 문제" : "결과 보기";
+}
+
+function check(submit){
+  if (G.done) return;
+  const v = norm($("answerInput").value);
+  if (!v) return;
+  if (v === norm(G.deck[G.i][1])) finish(true);
+  else if (submit) { const inp = $("answerInput"); inp.classList.remove("shake"); void inp.offsetWidth; inp.classList.add("shake"); }
+}
+
+function next(){
+  if (!G.done) { G.pass++; G.missed.push(G.deck[G.i][1]); }
+  audio.pause();
+  if (G.i + 1 >= G.deck.length) return end();
+  G.i++; render();
+}
+
+// ---------- 키보드 ----------
+// 한글 입력 중(조합 중)에는 브라우저가 Enter/Esc를 먼저 가져가서 가끔 씹히는 문제가 있어
+// 화살표 키를 추가로 지원하고, e.code로 판단해 조합 중에도 동작하게 함
+const inputEl = $("answerInput");
+inputEl.addEventListener("input", () => check(false));
+inputEl.addEventListener("compositionend", () => setTimeout(() => check(false), 0));
+$("answerForm").addEventListener("submit", e => { e.preventDefault(); check(true); });
+document.addEventListener("keydown", e => {
+  if ($("game").hidden || modalOpen()) { if (e.key === "Escape" && modalOpen()) document.querySelectorAll(".modal").forEach(m => { if (!m.hidden) closeModal(m.id); }); return; }
+  const code = e.code || e.key;
+  if (code === "Escape" || code === "ArrowUp") { e.preventDefault(); play(); return; }
+  if (code === "ArrowDown") { e.preventDefault(); if (!G.done) finish(false); return; }
+  if (code === "ArrowRight") {
+    // 입력 중에 커서 이동용으로 쓰는 경우는 막지 않음 (커서가 맨 끝일 때만 넘어가기)
+    if (!G.done && inputEl.value && inputEl.selectionStart < inputEl.value.length) return;
+    e.preventDefault(); next(); return;
+  }
+  if ((code === "Enter" || code === "NumpadEnter") && G.done) {
+    e.preventDefault();
+    // 정답이 자동으로 맞춰진 직후의 Enter(글자 확정용)는 무시해서 정답 화면을 건너뛰지 않게 함
+    if (performance.now() - G.doneAt < 350) return;
+    next();
+  }
+});
+
+$("startBtn").onclick = start;
+$("againBtn").onclick = start;
+$("homeBtn").onclick = () => { audio.pause(); history.length > 1 && location.hash === "#play" ? history.back() : show("setup"); };
+$("toSetup").onclick = () => { show("setup"); if (location.hash) history.replaceState(null, "", location.pathname + location.search); };
+$("playBtn").onclick = () => { play(); if (!G.done) inputEl.focus(); };
+$("revealBtn").onclick = () => finish(false);
+$("nextBtn").onclick = next;
+
+// ---------- 결과 & 공유 ----------
+function rank(p){ return p === 100 ? "울음소리 마스터" : p >= 80 ? "포켓몬 박사" : p >= 60 ? "베테랑 트레이너" : p >= 40 ? "성장 중인 트레이너" : "신참 트레이너"; }
+function challengeUrl(){ return `${location.origin}${location.pathname}?gen=${G.gen}&n=${S.count}`; }
+
+function end(){
+  const total = G.deck.length, pct = Math.round(G.ok / total * 100);
+  show("end");
+  $("rankTitle").textContent = rank(pct);
+  $("finalScore").textContent = `${G.ok} / ${total}`;
+  $("finalDetail").textContent = `${genLabel(G.gen)} · 정답률 ${pct}%`;
+  $("missedLabel").hidden = !G.missed.length;
+  $("missed").innerHTML = G.missed.map(n => `<span class="pill">${n}</span>`).join("");
+  openShare();
+}
+
+let shareBlob = null;
+async function openShare(){
+  const total = G.deck.length, pct = Math.round(G.ok / total * 100);
+  $("shareLink").value = challengeUrl();
+  $("nativeShare").hidden = !navigator.share;
+  $("saveImg").style.gridColumn = navigator.share ? "" : "1 / -1";
+  openModal("share");
+  const canvas = await drawCard(G.ok, total, pct);
+  $("shareImg").src = canvas.toDataURL("image/png");
+  canvas.toBlob(b => shareBlob = b, "image/png");
+}
+$("openShare").onclick = openShare;
+
+async function drawCard(ok, total, pct){
+  try { await Promise.all([document.fonts.load('64px "Do Hyeon"'), document.fonts.load('700 32px "IBM Plex Sans KR"'), document.fonts.load('500 30px "IBM Plex Mono"')]); } catch (e) {}
+  const W = 1080, H = 1350, c = document.createElement("canvas"); c.width = W; c.height = H;
+  const x = c.getContext("2d");
+  const DISP = '"Do Hyeon", sans-serif', BODY = '"IBM Plex Sans KR", sans-serif', MONO = '"IBM Plex Mono", monospace';
+  // 배경
+  const bg = x.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, "#14213d"); bg.addColorStop(1, "#0b1220");
+  x.fillStyle = bg; x.fillRect(0, 0, W, H);
+  // 음파 장식
+  x.strokeStyle = "rgba(91,140,255,.18)"; x.lineWidth = 3;
+  for (let r = 160; r < 900; r += 70) { x.beginPath(); x.arc(W / 2, 520, r, 0, Math.PI * 2); x.stroke(); }
+  // 상단 웨이브 로고
+  x.fillStyle = "#5b8cff";
+  [18, 36, 48, 26, 14].forEach((h, k) => { x.beginPath(); x.roundRect(90 + k * 14, 120 - h / 2, 8, h, 4); x.fill(); });
+  x.fillStyle = "#e7edf3"; x.font = `56px ${DISP}`; x.textBaseline = "middle"; x.fillText("울음소리 도감 퀴즈", 180, 122);
+  // 범위
+  x.textAlign = "center"; x.fillStyle = "#93a1ae"; x.font = `500 34px ${BODY}`;
+  x.fillText(`${genLabel(G.gen)} · ${total}문제`, W / 2, 330);
+  // 점수
+  x.fillStyle = "#ffffff"; x.font = `500 190px ${MONO}`;
+  x.fillText(`${ok}/${total}`, W / 2, 500);
+  x.fillStyle = "#5b8cff"; x.font = `500 44px ${MONO}`;
+  x.fillText(`정답률 ${pct}%`, W / 2, 640);
+  // 칭호
+  x.fillStyle = "#fac000"; x.font = `96px ${DISP}`;
+  x.fillText(rank(pct), W / 2, 770);
+  // 하단 QR 영역
+  const boxY = 930;
+  x.fillStyle = "rgba(255,255,255,.06)"; x.beginPath(); x.roundRect(90, boxY, W - 180, 300, 28); x.fill();
+  let qrDrawn = false;
+  if (window.qrcode) {
+    try {
+      const q = qrcode(0, "M"); q.addData(challengeUrl()); q.make();
+      const n = q.getModuleCount(), size = 240, cell = size / (n + 8), ox = 120, oy = boxY + 30;
+      x.fillStyle = "#ffffff"; x.beginPath(); x.roundRect(ox, oy, size, size, 16); x.fill();
+      x.fillStyle = "#0b1220";
+      for (let r = 0; r < n; r++) for (let col = 0; col < n; col++) if (q.isDark(r, col)) x.fillRect(ox + (col + 4) * cell, oy + (r + 4) * cell, cell + .5, cell + .5);
+      qrDrawn = true;
+    } catch (e) {}
+  }
+  x.textAlign = "left";
+  const tx = qrDrawn ? 400 : 140;
+  x.fillStyle = "#e7edf3"; x.font = `60px ${DISP}`; x.fillText("너도 맞혀 볼래?", tx, boxY + 105);
+  x.fillStyle = "#93a1ae"; x.font = `500 30px ${BODY}`;
+  x.fillText(qrDrawn ? "QR을 찍으면 같은 문제로 도전!" : "링크로 같은 문제에 도전!", tx, boxY + 170);
+  x.font = `500 24px ${MONO}`;
+  let url = location.host + location.pathname; if (url.length > 34) url = url.slice(0, 33) + "…";
+  x.fillText(url, tx, boxY + 222);
+  // 날짜
+  x.textAlign = "center"; x.fillStyle = "#56636f"; x.font = `500 24px ${MONO}`;
+  const d = new Date(); x.fillText(`${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`, W / 2, H - 60);
+  return c;
+}
+
+$("saveImg").onclick = () => {
+  const src = $("shareImg").src; if (!src) return;
+  const a = document.createElement("a");
+  a.href = shareBlob ? URL.createObjectURL(shareBlob) : src;
+  a.download = `울음소리퀴즈_${G.ok}of${G.deck.length}.png`;
+  document.body.appendChild(a); a.click(); a.remove();
+  toast("이미지를 저장했어요");
+};
+$("nativeShare").onclick = async () => {
+  const text = `포켓몬 울음소리 퀴즈 ${genLabel(G.gen)} ${G.deck.length}문제 중 ${G.ok}개 맞혔어! 너도 도전해 봐`;
+  const file = shareBlob ? new File([shareBlob], "cry-quiz-result.png", {type: "image/png"}) : null;
+  try {
+    if (file && navigator.canShare?.({files: [file]})) await navigator.share({files: [file], text, url: challengeUrl()});
+    else await navigator.share({title: "울음소리 도감 퀴즈", text, url: challengeUrl()});
+  } catch (e) {}
+};
+$("copyLink").onclick = async () => {
+  const v = $("shareLink").value;
+  try { await navigator.clipboard.writeText(v); toast("링크를 복사했어요"); }
+  catch (e) { $("shareLink").select(); toast("링크를 선택했어요. Cmd+C로 복사하세요"); }
+};
+let toastT;
+function toast(msg){ const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 1800); }
+
+// 초기화
+renderGens(); renderCount(); renderOpts();
+if (location.hash === "#play") history.replaceState(null, "", location.pathname + location.search);
+</script>
+</body>
+</html>
